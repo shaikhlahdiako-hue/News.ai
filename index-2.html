@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>دیده‌بان مالی و هوش مصنوعی</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vazirmatn/33.0.3/Vazirmatn-font-face.css">
+<style>
+  :root {
+    --bg: #eef2f6;
+    --surface: #ffffff;
+    --ink: #13233a;
+    --muted: #5b6b80;
+    --line: #d5dde7;
+    --accent: #2457e6;
+    --warm: #b86a00;
+    --focus: #2457e6;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e1726;
+      --surface: #152238;
+      --ink: #e6edf7;
+      --muted: #94a5bd;
+      --line: #263650;
+      --accent: #6d94ff;
+      --warm: #f0b25a;
+      --focus: #9db8ff;
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: Vazirmatn, "Segoe UI", Tahoma, system-ui, sans-serif;
+    line-height: 1.8; font-variant-numeric: tabular-nums;
+  }
+  a { color: inherit; }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
+  .wrap { max-width: 1040px; margin-inline: auto; padding-inline: 20px; }
+
+  /* Header: fixed physical layout (settings left, brand + menu button right) */
+  header.top { background: var(--surface); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 10; }
+  .bar { direction: ltr; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 60px; }
+  .right-side { display: flex; align-items: center; gap: 10px; }
+  .brand { font-weight: 800; font-size: 1.05rem; text-decoration: none; unicode-bidi: plaintext; }
+  .icon-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    background: transparent; border: 1px solid var(--line); border-radius: 8px;
+    min-width: 40px; height: 40px; padding: 0 10px; cursor: pointer;
+  }
+  .icon-btn:hover { border-color: var(--accent); }
+  .settings { position: relative; }
+  .panel {
+    position: absolute; left: 0; top: calc(100% + 8px); width: 240px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+    padding: 14px; box-shadow: 0 8px 30px rgba(10,20,40,.18); direction: var(--dir, rtl);
+  }
+  .panel[hidden] { display: none; }
+  .panel h2 { font-size: .95rem; margin: 0 0 10px; }
+  .panel fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; }
+  .panel legend { font-size: .85rem; color: var(--muted); margin-bottom: 8px; padding: 0; }
+  .opt { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+  .opt:has(input:checked) { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+  .opt input { accent-color: var(--accent); }
+  @media (max-width: 520px) { .gear-label { display: none; } }
+
+  /* Category drawer: hidden until the three-dot button is pressed */
+  .scrim { position: fixed; inset: 0; background: rgba(8,16,30,.5); opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 20; }
+  .scrim.open { opacity: 1; pointer-events: auto; }
+  .drawer {
+    position: fixed; top: 0; right: 0; height: 100%; width: min(310px, 86vw);
+    background: var(--surface); border-left: 1px solid var(--line);
+    transform: translateX(100%); visibility: hidden;
+    transition: transform .22s ease, visibility 0s linear .22s;
+    z-index: 30; display: flex; flex-direction: column; direction: var(--dir, rtl);
+  }
+  .drawer.open { transform: none; visibility: visible; transition: transform .22s ease; }
+  .drawer-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+  .drawer-head h2 { margin: 0; font-size: 1rem; }
+  .drawer ul { list-style: none; margin: 0; padding: 10px; display: grid; gap: 4px; }
+  .drawer a { display: block; padding: 12px 14px; border-radius: 8px; text-decoration: none; font-weight: 600; }
+  .drawer a small { display: block; font-weight: 400; color: var(--muted); font-size: .82rem; line-height: 1.5; }
+  .drawer a:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+  .drawer a[aria-current="page"] { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+  @media (prefers-reduced-motion: reduce) {
+    .scrim, .drawer, .drawer.open { transition: none; }
+    html { scroll-behavior: auto; }
+  }
+
+  /* Pages */
+  main { padding-bottom: 20px; }
+  .page-head { padding: 36px 0 18px; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 14px; }
+  .page-head h1 { font-size: clamp(1.5rem, 4.5vw, 2.2rem); line-height: 1.5; margin: 0; }
+  .page-head h1:focus { outline: none; }
+  .lead { color: var(--muted); margin: 0; flex-basis: 100%; max-width: 42em; }
+  .badge { font-size: .78rem; color: var(--warm); border: 1px solid var(--warm); border-radius: 999px; padding: 0 10px; white-space: nowrap; }
+
+  .hero { padding: 44px 0 20px; }
+  .hero h1 { font-size: clamp(1.7rem, 5vw, 2.6rem); line-height: 1.5; margin: 0 0 10px; max-width: 18em; }
+  .hero h1:focus { outline: none; }
+  .hero p { margin: 0; color: var(--muted); max-width: 40em; }
+  .links { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-top: 20px; }
+  .links a { display: block; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; text-decoration: none; }
+  .links a:hover { border-color: var(--accent); }
+  .links strong { display: block; font-size: 1.05rem; }
+  .links span { color: var(--muted); font-size: .9rem; }
+
+  .board { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .row { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr 90px; align-items: center; gap: 8px; padding: 12px 18px; border-bottom: 1px solid var(--line); }
+  .row:last-child { border-bottom: 0; }
+  .row.head { color: var(--muted); font-size: .82rem; padding-block: 8px; }
+  .country { font-weight: 700; }
+  .yr { color: var(--muted); font-weight: 400; font-size: .75rem; }
+  .num { font-size: 1.25rem; font-weight: 700; }
+  .num small { font-size: .75rem; color: var(--muted); font-weight: 400; margin-inline-start: 2px; }
+  .spark { width: 80px; height: 28px; }
+  .spark polyline { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  @media (max-width: 620px) {
+    .row { grid-template-columns: 1.2fr 1fr 1fr 1fr; padding-inline: 12px; }
+    .row > :last-child { display: none; }
+    .num { font-size: 1.05rem; }
+  }
+
+  .list { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+  .item { display: grid; grid-template-columns: 104px 1fr; gap: 14px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+  .item:last-child { border-bottom: 0; }
+  .when { color: var(--warm); font-weight: 700; font-size: .9rem; }
+  .item h3 { font-size: 1rem; margin: 0; line-height: 1.6; }
+  .item p { margin: 2px 0 0; color: var(--muted); font-size: .9rem; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+  .news { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+  .news h3 { margin: 0 0 6px; font-size: 1.02rem; line-height: 1.6; }
+  .news p { margin: 0; color: var(--muted); font-size: .92rem; }
+  .tag { display: inline-block; font-size: .78rem; color: var(--accent); margin-bottom: 4px; }
+  .note { color: var(--muted); font-size: .85rem; margin-top: 14px; }
+  footer { margin-top: 40px; padding: 24px 0 40px; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap bar">
+    <div class="settings">
+      <button class="icon-btn" id="settingsBtn" aria-expanded="false" aria-controls="settingsPanel">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span class="gear-label" id="settingsLabel"></span>
+      </button>
+      <div class="panel" id="settingsPanel" hidden>
+        <h2 id="settingsTitle"></h2>
+        <fieldset>
+          <legend id="langLegend"></legend>
+          <label class="opt"><input type="radio" name="lang" value="fa"> <span>فارسی</span></label>
+          <label class="opt"><input type="radio" name="lang" value="en"> <span>English</span></label>
+        </fieldset>
+      </div>
+    </div>
+
+    <div class="right-side">
+      <a class="brand" href="#/" id="brand"></a>
+      <button class="icon-btn" id="menuBtn" aria-expanded="false" aria-controls="drawer">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-labelledby="drawerTitle">
+  <div class="drawer-head">
+    <h2 id="drawerTitle"></h2>
+    <button class="icon-btn" id="menuClose">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </div>
+  <nav id="menuNav"></nav>
+</aside>
+
+<main>
+  <div class="wrap" id="view"></div>
+  <div class="wrap"><footer id="footer"></footer></div>
+</main>
+
+<script>
+const I18N = {
+  fa: {
+    title: "دیده‌بان مالی و هوش مصنوعی", brand: "دیده‌بان مالی و هوش مصنوعی",
+    menu: "منو", close: "بستن", categories: "دسته‌بندی‌ها", settings: "تنظیمات", language: "زبان سایت",
+    sample: "داده‌ی نمونه", live: "داده‌ی بانک جهانی", partial: "بخشی نمونه", loading: "در حال بارگذاری…",
+    pages: {
+      home: { n: "صفحه‌ی اصلی", d: "خلاصه‌ی همه‌ی بخش‌ها" },
+      data: { n: "داده‌های مالی", d: "شاخص‌های کلیدی کشورهای مهم", lead: "تورم، رشد اقتصادی و بیکاری در اقتصادهای بزرگ دنیا." },
+      calendar: { n: "تقویم اقتصادی", d: "رویدادهایی که بازارها دنبال می‌کنند", lead: "نشست بانک‌های مرکزی و انتشار گزارش‌های مهم اقتصادی." },
+      digital: { n: "رویدادهای دیجیتال", d: "کنفرانس‌ها، قوانین و فناوری", lead: "رویدادهای فناوری و دیجیتالی که روی اقتصاد اثر می‌گذارند." },
+      ai: { n: "اخبار هوش مصنوعی", d: "تحولاتی که روی مالی اثر دارند", lead: "تازه‌ترین تغییرات هوش مصنوعی و اثرشان بر مالی و اقتصاد." }
+    },
+    hero_title: "اقتصاد جهان و تحولات هوش مصنوعی، یک‌جا",
+    hero_text: "برای دیدن هر بخش، از دکمه‌ی منوی بالا سمت راست استفاده کن، یا یکی از کارت‌های زیر را بزن.",
+    col_country: "کشور", col_inflation: "تورم", col_growth: "رشد اقتصادی", col_rate: "بیکاری", col_trend: "روند رشد",
+    data_note: "داده‌ها از API بانک جهانی می‌آیند (آخرین مقدار سالانه‌ی موجود، سال کنار نام کشور است). اگر بارگذاری نشود، داده‌ی نمونه نشان داده می‌شود.",
+    footer: "تقویم، رویدادها و اخبار این نسخه نمونه‌اند و باید با منابع رسمی جایگزین شوند.",
+    countries: { us: "آمریکا", eu: "منطقه یورو", cn: "چین", jp: "ژاپن", uk: "بریتانیا", de: "آلمان" },
+    calendar: [
+      { d: "2026-12-09", t: "نشست نرخ بهره‌ی بانک مرکزی", s: "تصمیم درباره‌ی نرخ بهره و بیانیه‌ی همراه آن." },
+      { d: "2026-12-17", t: "انتشار گزارش تورم ماهانه", s: "شاخص قیمت مصرف‌کننده‌ی ماه گذشته." },
+      { d: "2026-12-19", t: "گزارش اشتغال و بازار کار", s: "تعداد مشاغل جدید و نرخ بیکاری." },
+      { d: "2027-01-14", t: "گزارش تولید ناخالص داخلی فصلی", s: "برآورد رشد اقتصادی فصل گذشته." },
+      { d: "2027-01-28", t: "نشست بعدی بانک مرکزی", s: "بررسی سیاست پولی در سال جدید." }
+    ],
+    digital: [
+      { d: "2026-12-04", t: "کنفرانس فناوری مالی", s: "نوآوری در پرداخت و بانکداری دیجیتال." },
+      { d: "2026-12-11", t: "جلسه‌ی مقررات دارایی‌های دیجیتال", s: "بررسی چارچوب قانونی ارزهای دیجیتال." },
+      { d: "2027-01-06", t: "نمایشگاه جهانی الکترونیک", s: "معرفی سخت‌افزار و محصولات هوشمند جدید." },
+      { d: "2027-02-10", t: "همایش امنیت سایبری در مالی", s: "تهدیدها و راهکارها برای مؤسسات مالی." }
+    ],
+    ai: [
+      { g: "معاملات الگوریتمی", t: "مدل‌های زبانی در تحلیل گزارش‌های مالی", s: "نمونه‌ای از اینکه شرکت‌ها چطور از AI برای خلاصه‌سازی گزارش سود استفاده می‌کنند." },
+      { g: "بانکداری", t: "تشخیص تقلب با یادگیری ماشین", s: "نمونه‌ای از کاربرد مدل‌های هوشمند در شناسایی تراکنش‌های مشکوک." },
+      { g: "مقررات", t: "قوانین جدید درباره‌ی هوش مصنوعی در مالی", s: "نمونه‌ای از خبر تنظیم‌گری و اثر آن بر مؤسسات مالی." },
+      { g: "بازار کار", t: "اثر خودکارسازی بر مشاغل مالی", s: "نمونه‌ای از تحلیل تغییر نقش‌ها در حسابداری و تحلیل مالی." }
+    ]
+  },
+  en: {
+    title: "Finance & AI Watch", brand: "Finance & AI Watch",
+    menu: "Menu", close: "Close", categories: "Categories", settings: "Settings", language: "Site language",
+    sample: "Sample data", live: "World Bank data", partial: "Partly sample", loading: "Loading…",
+    pages: {
+      home: { n: "Home", d: "Overview of every section" },
+      data: { n: "Financial data", d: "Key indicators for major countries", lead: "Inflation, GDP growth and unemployment in the world's large economies." },
+      calendar: { n: "Economic calendar", d: "Events that markets are watching", lead: "Central bank meetings and major economic data releases." },
+      digital: { n: "Digital events", d: "Conferences, regulation and tech", lead: "Technology and digital events that affect the economy." },
+      ai: { n: "AI news", d: "Developments that affect finance", lead: "The latest changes in AI and their impact on finance and the economy." }
+    },
+    hero_title: "The world economy and AI developments, in one place",
+    hero_text: "Use the menu button at the top right to open any section, or tap one of the cards below.",
+    col_country: "Country", col_inflation: "Inflation", col_growth: "GDP growth", col_rate: "Unemployment", col_trend: "Growth trend",
+    data_note: "Data comes from the World Bank API (latest available annual value; the year is shown next to the country). If loading fails, sample data is shown.",
+    footer: "The calendar, events and news in this version are samples and should be replaced with official sources.",
+    countries: { us: "United States", eu: "Euro area", cn: "China", jp: "Japan", uk: "United Kingdom", de: "Germany" },
+    calendar: [
+      { d: "2026-12-09", t: "Central bank rate decision", s: "Policy rate decision and accompanying statement." },
+      { d: "2026-12-17", t: "Monthly inflation report", s: "Consumer price index for the previous month." },
+      { d: "2026-12-19", t: "Jobs and labor market report", s: "New jobs added and the unemployment rate." },
+      { d: "2027-01-14", t: "Quarterly GDP release", s: "Growth estimate for the previous quarter." },
+      { d: "2027-01-28", t: "Next central bank meeting", s: "Monetary policy review for the new year." }
+    ],
+    digital: [
+      { d: "2026-12-04", t: "Fintech conference", s: "Innovation in payments and digital banking." },
+      { d: "2026-12-11", t: "Digital asset regulation hearing", s: "Review of the legal framework for crypto assets." },
+      { d: "2027-01-06", t: "Global electronics show", s: "New hardware and smart products on display." },
+      { d: "2027-02-10", t: "Cybersecurity in finance summit", s: "Threats and defenses for financial institutions." }
+    ],
+    ai: [
+      { g: "Algorithmic trading", t: "Language models in financial report analysis", s: "A sample of how firms use AI to summarize earnings reports." },
+      { g: "Banking", t: "Fraud detection with machine learning", s: "A sample of smart models flagging suspicious transactions." },
+      { g: "Regulation", t: "New AI rules in finance", s: "A sample regulatory story and its impact on financial institutions." },
+      { g: "Labor market", t: "Automation and finance jobs", s: "A sample analysis of changing roles in accounting and financial analysis." }
+    ]
+  }
+};
+
+// World Bank codes + sample fallback values (used until/unless live data loads)
+const COUNTRIES = [
+  { k: "us", wb: "USA", infl: 3.1, gdp: 2.2, unemp: 4.1, trend: [1.8, 2.0, 2.4, 2.1, 2.2] },
+  { k: "eu", wb: "EMU", infl: 2.4, gdp: 0.9, unemp: 6.3, trend: [0.4, 0.6, 0.5, 0.8, 0.9] },
+  { k: "cn", wb: "CHN", infl: 0.8, gdp: 4.8, unemp: 5.1, trend: [5.2, 5.0, 4.9, 4.8, 4.8] },
+  { k: "jp", wb: "JPN", infl: 2.6, gdp: 1.0, unemp: 2.5, trend: [0.2, 0.7, 0.9, 1.1, 1.0] },
+  { k: "uk", wb: "GBR", infl: 3.4, gdp: 1.1, unemp: 4.3, trend: [0.5, 0.8, 1.0, 1.2, 1.1] },
+  { k: "de", wb: "DEU", infl: 2.2, gdp: 0.4, unemp: 3.4, trend: [-0.2, 0.0, 0.2, 0.3, 0.4] }
+];
+let status = "loading"; // loading | live | partial | sample
+
+const ROUTES = ["home", "data", "calendar", "digital", "ai"];
+const $ = (s) => document.querySelector(s);
+let lang = "fa";
+
+function currentRoute() {
+  const h = location.hash.replace(/^#\/?/, "");
+  return ROUTES.includes(h) ? h : "home";
+}
+
+function spark(values) {
+  const min = Math.min(...values), max = Math.max(...values);
+  const span = max - min || 1;
+  const pts = values.map((v, i) => {
+    const x = 4 + (i * 72) / (values.length - 1);
+    const y = 24 - ((v - min) / span) * 20;
+    return x.toFixed(1) + "," + y.toFixed(1);
+  }).join(" ");
+  return '<svg class="spark" viewBox="0 0 80 28" aria-hidden="true"><polyline points="' + pts + '"/></svg>';
+}
+
+/* ---------- Page views ---------- */
+function pageHead(t, key, badgeText) {
+  return '<div class="page-head"><h1 tabindex="-1">' + t.pages[key].n + '</h1>' +
+    (badgeText ? '<span class="badge" id="badge">' + badgeText + '</span>' : '') +
+    '<p class="lead">' + t.pages[key].lead + '</p></div>';
+}
+
+function viewHome(t) {
+  const cards = ROUTES.filter((r) => r !== "home").map((r) =>
+    '<a href="#/' + r + '"><strong>' + t.pages[r].n + '</strong><span>' + t.pages[r].d + '</span></a>'
+  ).join("");
+  return '<div class="hero"><h1 tabindex="-1">' + t.hero_title + '</h1><p>' + t.hero_text + '</p></div>' +
+    '<div class="links">' + cards + '</div>';
+}
+
+function viewData(t, nf, yf) {
+  const val = (v) => v == null ? "—" : nf.format(v) + "<small>%</small>";
+  const rows = COUNTRIES.map((c) =>
+    '<div class="row">' +
+      '<span class="country">' + t.countries[c.k] + (c.year ? ' <span class="yr">' + yf.format(c.year) + '</span>' : '') + '</span>' +
+      '<span class="num">' + val(c.infl) + '</span>' +
+      '<span class="num">' + val(c.gdp) + '</span>' +
+      '<span class="num">' + val(c.unemp) + '</span>' +
+      '<span>' + spark(c.trend) + '</span>' +
+    '</div>'
+  ).join("");
+  return pageHead(t, "data", t[status === "sample" ? "sample" : status]) +
+    '<div class="board">' +
+      '<div class="row head"><span>' + t.col_country + '</span><span>' + t.col_inflation + '</span><span>' + t.col_growth +
+      '</span><span>' + t.col_rate + '</span><span>' + t.col_trend + '</span></div>' + rows +
+    '</div><p class="note">' + t.data_note + '</p>';
+}
+
+function eventItems(arr, df) {
+  return '<div class="list">' + arr.map((e) =>
+    '<div class="item"><span class="when">' + df.format(new Date(e.d + "T12:00:00")) + '</span>' +
+    '<div><h3>' + e.t + '</h3><p>' + e.s + '</p></div></div>'
+  ).join("") + '</div>';
+}
+
+function viewAI(t) {
+  return pageHead(t, "ai", t.sample) + '<div class="grid">' + t.ai.map((n) =>
+    '<article class="news"><span class="tag">' + n.g + '</span><h3>' + n.t + '</h3><p>' + n.s + '</p></article>'
+  ).join("") + '</div>';
+}
+
+/* ---------- Rendering ---------- */
+function render(navigated) {
+  const t = I18N[lang];
+  const locale = lang === "fa" ? "fa-IR" : "en-US";
+  const nf = new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  const yf = new Intl.NumberFormat(locale, { useGrouping: false });
+  const df = new Intl.DateTimeFormat(lang === "fa" ? "fa-IR-u-ca-gregory" : "en-US", { day: "numeric", month: "long", year: "numeric" });
+  const route = currentRoute();
+
+  const dir = lang === "fa" ? "rtl" : "ltr";
+  document.documentElement.lang = lang;
+  document.documentElement.dir = dir;
+  document.documentElement.style.setProperty("--dir", dir);
+  document.title = (route === "home" ? "" : t.pages[route].n + " | ") + t.title;
+
+  $("#brand").textContent = t.brand;
+  $("#menuBtn").setAttribute("aria-label", t.menu);
+  $("#menuClose").setAttribute("aria-label", t.close);
+  $("#drawerTitle").textContent = t.categories;
+  $("#settingsLabel").textContent = t.settings;
+  $("#settingsBtn").setAttribute("aria-label", t.settings);
+  $("#settingsTitle").textContent = t.settings;
+  $("#langLegend").textContent = t.language;
+  $("#footer").textContent = t.footer;
+  document.querySelectorAll('input[name="lang"]').forEach((r) => { r.checked = r.value === lang; });
+
+  $("#menuNav").innerHTML = "<ul>" + ROUTES.map((r) =>
+    '<li><a href="#/' + (r === "home" ? "" : r) + '"' + (r === route ? ' aria-current="page"' : "") + '>' +
+    t.pages[r].n + '<small>' + t.pages[r].d + '</small></a></li>'
+  ).join("") + "</ul>";
+
+  const views = {
+    home: () => viewHome(t),
+    data: () => viewData(t, nf, yf),
+    calendar: () => pageHead(t, "calendar", t.sample) + eventItems(t.calendar, df),
+    digital: () => pageHead(t, "digital", t.sample) + eventItems(t.digital, df),
+    ai: () => viewAI(t)
+  };
+  $("#view").innerHTML = views[route]();
+
+  if (navigated) {
+    window.scrollTo(0, 0);
+    const h1 = $("#view h1");
+    if (h1) h1.focus({ preventScroll: true });
+  }
+}
+
+/* ---------- Drawer (three-dot menu) ---------- */
+const menuBtn = $("#menuBtn"), drawer = $("#drawer"), scrim = $("#scrim");
+function setMenu(open) {
+  drawer.classList.toggle("open", open);
+  scrim.classList.toggle("open", open);
+  menuBtn.setAttribute("aria-expanded", String(open));
+  if (open) { setPanel(false); const first = drawer.querySelector("a"); if (first) first.focus(); }
+}
+menuBtn.addEventListener("click", () => setMenu(!drawer.classList.contains("open")));
+$("#menuClose").addEventListener("click", () => { setMenu(false); menuBtn.focus(); });
+scrim.addEventListener("click", () => setMenu(false));
+$("#menuNav").addEventListener("click", (e) => { if (e.target.closest("a")) setMenu(false); });
+
+/* ---------- Settings panel ---------- */
+const sBtn = $("#settingsBtn"), panel = $("#settingsPanel");
+function setPanel(open) {
+  panel.hidden = !open;
+  sBtn.setAttribute("aria-expanded", String(open));
+}
+sBtn.addEventListener("click", () => { const open = panel.hidden; if (open) setMenu(false); setPanel(open); });
+document.addEventListener("click", (e) => {
+  if (!panel.hidden && !panel.contains(e.target) && !sBtn.contains(e.target)) setPanel(false);
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  if (drawer.classList.contains("open")) { setMenu(false); menuBtn.focus(); }
+  else if (!panel.hidden) { setPanel(false); sBtn.focus(); }
+});
+document.querySelectorAll('input[name="lang"]').forEach((r) => {
+  r.addEventListener("change", () => { lang = r.value; render(false); });
+});
+
+window.addEventListener("hashchange", () => render(true));
+
+/* ---------- Live data from the World Bank API ---------- */
+async function wb(code, indicator, n) {
+  const url = "https://api.worldbank.org/v2/country/" + code + "/indicator/" + indicator + "?format=json&mrv=" + n;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  const json = await res.json();
+  return (json[1] || []).filter((x) => x.value != null)
+    .map((x) => ({ y: +x.date, v: x.value })).sort((a, b) => a.y - b.y);
+}
+
+async function loadLive() {
+  let ok = 0;
+  await Promise.all(COUNTRIES.map(async (c) => {
+    try {
+      const [infl, gdp, unemp] = await Promise.all([
+        wb(c.wb, "FP.CPI.TOTL.ZG", 6),
+        wb(c.wb, "NY.GDP.MKTP.KD.ZG", 10),
+        wb(c.wb, "SL.UEM.TOTL.ZS", 6)
+      ]);
+      if (!gdp.length) throw new Error("no data");
+      const last = (a) => (a.length ? a[a.length - 1].v : null);
+      c.infl = last(infl);
+      c.gdp = last(gdp);
+      c.unemp = last(unemp);
+      c.trend = gdp.slice(-5).map((p) => p.v);
+      c.year = gdp[gdp.length - 1].y;
+      ok++;
+    } catch (e) { /* keep sample values for this country */ }
+  }));
+  status = ok === COUNTRIES.length ? "live" : ok > 0 ? "partial" : "sample";
+  render(false);
+}
+
+render(false);
+loadLive();
+</script>
+</body>
+</html>
